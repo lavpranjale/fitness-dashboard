@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -556,6 +556,1001 @@
             document.getElementById('completion-bar').style.width = `${percent}%`;
 
             // Dynamic text
+            const textEl = document.getElementById('completion-text');
+            if(percent === 0) textEl.innerText = "Ready to start?";
+            else if(percent < 50) textEl.innerText = "Keep pushing!";
+            else if(percent < 100) textEl.innerText = "Almost there!";
+            else textEl.innerText = "Day Complete! 🎉";
+        }
+
+        // --- Timer System ---
+        function toggleTimer() {
+            const modal = document.getElementById('timer-modal');
+            const content = document.getElementById('timer-content');
+            
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                }, 10);
+            } else {
+                modal.classList.add('opacity-0');
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        function startTimer(seconds) {
+            clearInterval(timerInterval);
+            totalTime = seconds;
+            timeLeft = seconds;
+            
+            const modal = document.getElementById('timer-modal');
+            if(modal.classList.contains('hidden')) toggleTimer();
+
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timerFinished();
+                }
+            }, 1000);
+        }
+
+        function addTime(seconds) {
+            timeLeft += seconds;
+            totalTime += seconds;
+            updateTimerDisplay();
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 0;
+            updateTimerDisplay();
+            document.getElementById('mini-timer-display').classList.add('hidden');
+            toggleTimer();
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const text = `${minutes < 10 ? '0':''}${minutes}:${seconds < 10 ? '0':''}${seconds}`;
+            
+            document.getElementById('timer-text').innerText = text;
+            document.getElementById('mini-timer-display').innerText = text;
+            document.getElementById('mini-timer-display').classList.remove('hidden');
+
+            const rawFraction = timeLeft / totalTime;
+            const fraction = rawFraction < 0 ? 0 : rawFraction;
+            const offset = FULL_DASH_ARRAY - (fraction * FULL_DASH_ARRAY);
+            document.getElementById('timer-circle').style.strokeDashoffset = offset;
+        }
+
+        function timerFinished() {
+            if(window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate([200, 100, 200]);
+            }
+            document.getElementById('timer-text').innerText = "DONE";
+            document.getElementById('timer-text').classList.add('text-green-400');
+            setTimeout(() => {
+                document.getElementById('timer-text').classList.remove('text-green-400');
+                toggleTimer();
+            }, 1000);
+        }
+
+        // --- Chart Config ---
+        function initChart() {
+            const ctx = document.getElementById('volumeChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); 
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B', 'Rest'],
+                    datasets: [{
+                        label: 'Working Sets',
+                        data: [15, 16, 13, 15, 12, 12, 0],
+                        borderColor: '#818cf8',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#6366f1',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            padding: 10,
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: {size: 10} }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>45-Day Recomp Pro Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',
+                            light: '#1e293b',
+                            accent: '#6366f1',
+                            success: '#10b981',
+                        }
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s ease-out forwards',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-header {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .day-btn.active {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border-color: transparent;
+            box-shadow: 0 4px 20px -5px rgba(99, 102, 241, 0.5);
+            transform: scale(1.05);
+        }
+        .custom-checkbox input:checked + div {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+        .custom-checkbox input:checked + div svg {
+            display: block;
+        }
+        .timer-ring circle {
+            transition: stroke-dashoffset 1s linear;
+        }
+        /* New YouTube Button Style */
+        .yt-btn:hover {
+            background-color: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+            border-color: rgba(255, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="antialiased pb-24">
+
+    <header class="glass-header fixed top-0 w-full z-50 transition-all duration-300" id="main-header">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <span class="text-xl">💪</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight">Recomp<span class="text-indigo-400">Pro</span></h1>
+                    <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Dev Edition v2.0</p>
+                </div>
+            </div>
+            
+            <button onclick="toggleTimer()" class="relative p-2 rounded-full bg-slate-800 border border-slate-700 hover:bg-slate-700 transition active:scale-95">
+                <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span id="mini-timer-display" class="absolute -top-1 -right-1 bg-indigo-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">00:00</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 pt-24 space-y-6">
+
+        <section class="grid grid-cols-2 gap-3">
+            <div class="glass-panel p-4 rounded-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                <p class="text-xs text-slate-400 font-medium mb-1">Weekly Intensity</p>
+                <div class="flex items-end gap-2">
+                    <span class="text-2xl font-bold text-white">High</span>
+                    <span class="text-xs text-indigo-400 mb-1.5">Volume</span>
+                </div>
+                <div class="w-full bg-slate-700/50 h-1.5 mt-3 rounded-full overflow-hidden">
+                    <div class="bg-indigo-500 h-full rounded-full animate-pulse-slow" style="width: 85%"></div>
+                </div>
+            </div>
+            
+            <div class="glass-panel p-4 rounded-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                <p class="text-xs text-slate-400 font-medium mb-1">Day Completion</p>
+                <div class="flex items-end gap-2">
+                    <span class="text-2xl font-bold text-white" id="completion-rate">0%</span>
+                    <span class="text-xs text-emerald-400 mb-1.5" id="completion-text">Let's go!</span>
+                </div>
+                <div class="w-full bg-slate-700/50 h-1.5 mt-3 rounded-full overflow-hidden">
+                    <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" id="completion-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wide">Weekly Schedule</h2>
+                <span class="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">Scroll →</span>
+            </div>
+            <div class="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory" id="day-scroller">
+                </div>
+        </section>
+
+        <section id="workout-container" class="animate-slide-up">
+            <div class="glass-panel p-6 rounded-3xl mb-6 border-t-4" id="day-border-color">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span id="day-tag" class="inline-block px-3 py-1 bg-slate-700 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider mb-2">Push A</span>
+                        <h2 id="day-title" class="text-2xl font-bold text-white leading-tight">Heavy Compounds</h2>
+                    </div>
+                    <span id="day-emoji" class="text-4xl filter drop-shadow-lg transform hover:scale-110 transition cursor-default">💪</span>
+                </div>
+                <p id="day-focus" class="text-sm text-slate-400 leading-relaxed mb-4 border-l-2 border-slate-600 pl-3">
+                    Focus: Developing raw strength.
+                </p>
+                
+                <div class="flex gap-3 mt-4">
+                    <button onclick="resetDayProgress()" class="flex-1 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-400 hover:bg-slate-700 hover:text-white transition">
+                        Reset Day
+                    </button>
+                    <button onclick="scrollToTips()" class="flex-1 py-2 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/30 transition">
+                        Full Strategy
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-4 mb-8" id="exercise-list">
+                </div>
+
+            <div class="grid md:grid-cols-2 gap-4 mb-8">
+                <div class="glass-panel p-5 rounded-2xl border border-orange-500/20 bg-gradient-to-br from-slate-800 to-orange-900/10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">🏃</span>
+                        <h3 class="font-bold text-orange-200">Cardio Protocol</h3>
+                    </div>
+                    <div id="cardio-content" class="text-sm text-slate-300 leading-relaxed"></div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl border border-pink-500/20 bg-gradient-to-br from-slate-800 to-pink-900/10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">🎯</span>
+                        <h3 class="font-bold text-pink-200">Core Finisher</h3>
+                    </div>
+                    <div id="core-content" class="text-sm text-slate-300 leading-relaxed"></div>
+                </div>
+            </div>
+
+            <div id="tips-section" class="glass-panel p-6 rounded-2xl border-l-4 border-indigo-500 bg-slate-800/50">
+                <div class="flex gap-3">
+                    <div class="mt-1 flex-shrink-0">
+                        <span class="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500 text-white font-bold text-lg">!</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-base mb-2">Dev Physique Strategy</h4>
+                        <div id="day-tip" class="text-sm text-slate-300 space-y-2 leading-relaxed">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="glass-panel p-5 rounded-2xl">
+            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Weekly Volume Load
+            </h3>
+            <div class="h-64 w-full">
+                <canvas id="volumeChart"></canvas>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="timer-modal" class="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="glass-panel p-8 rounded-3xl w-80 text-center transform scale-95 transition-transform duration-300" id="timer-content">
+            <h3 class="text-xl font-bold text-white mb-6">Rest Timer</h3>
+            
+            <div class="relative w-48 h-48 mx-auto mb-8">
+                <svg class="w-full h-full transform -rotate-90">
+                    <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-700" />
+                    <circle id="timer-circle" cx="96" cy="96" r="88" stroke="currentColor" stroke-width="8" fill="transparent" class="text-indigo-500 timer-ring" stroke-dasharray="553" stroke-dashoffset="0" stroke-linecap="round" />
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                    <span id="timer-text" class="text-5xl font-bold text-white tabular-nums tracking-tighter">00:00</span>
+                    <span class="text-xs text-slate-400 mt-1 font-medium tracking-widest uppercase">Remaining</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <button onclick="startTimer(60)" class="py-2 rounded-lg bg-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-600 hover:text-white transition">60s</button>
+                <button onclick="startTimer(90)" class="py-2 rounded-lg bg-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-600 hover:text-white transition">90s</button>
+                <button onclick="startTimer(120)" class="py-2 rounded-lg bg-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-600 hover:text-white transition">120s</button>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="addTime(30)" class="flex-1 py-3 rounded-xl bg-slate-800 text-indigo-400 font-bold border border-slate-700 hover:bg-slate-700 transition">+30s</button>
+                <button onclick="stopTimer()" class="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 font-bold border border-red-500/30 hover:bg-red-500/30 transition">Stop</button>
+            </div>
+            
+            <button onclick="toggleTimer()" class="absolute top-4 right-4 text-slate-500 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Data Structure with Enhanced Analysis & YouTube Links ---
+        const workoutData = [
+            { 
+                id: 0, 
+                shortTitle: "Push A", 
+                title: "Heavy Push (Strength)", 
+                focus: "Chest, Front Delts, Triceps", 
+                color: "indigo", 
+                emoji: "💪", 
+                cardio: "Incline Walk 12 min (10-12%, 4.8km/h)", 
+                core: "Hanging Knee Raises: 3 x 12-15 (Focus on pelvic tilt)", 
+                tip: "<ul><li><strong>Posture Check:</strong> Since you sit 11 hours a day, your front delts are likely tight. Warm up with band pull-aparts.</li><li><strong>Wrist Health:</strong> Keep wrists straight on bench press. Don't let them roll back (typing strain).</li><li><strong>Rest:</strong> Take full 3 mins on the first two exercises. You need the CNS recovery.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "p1_1", 
+                        name: "Flat Barbell Bench Press", 
+                        sets: 3, 
+                        reps: "6–8", 
+                        tempo: "2-1-X-1", 
+                        rest: "180s", 
+                        rpe: "8-9", 
+                        note: "Retract scapula to protect shoulders. Feet flat.", 
+                        video: "https://www.youtube.com/watch?v=vcBig73ojpE" 
+                    },
+                    { 
+                        id: "p1_2", 
+                        name: "Incline DB Press", 
+                        sets: 3, 
+                        reps: "8–10", 
+                        tempo: "3-1-1-0", 
+                        rest: "120s", 
+                        rpe: "8", 
+                        note: "Set bench to 30°. Hits upper chest without front delt strain.", 
+                        video: "https://www.youtube.com/watch?v=8iPEnn-ltC8" 
+                    },
+                    { 
+                        id: "p1_3", 
+                        name: "Seated DB Shoulder Press", 
+                        sets: 3, 
+                        reps: "8–10", 
+                        tempo: "3-0-1-0", 
+                        rest: "90s", 
+                        rpe: "8", 
+                        note: "Keep elbows slightly in front of body (scapular plane), not flared out.", 
+                        video: "https://www.youtube.com/watch?v=qEwKCR5JCog" 
+                    },
+                    { 
+                        id: "p1_4", 
+                        name: "Lateral Raises", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-0-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Lead with elbows. Imagine pouring a jug of water.", 
+                        video: "https://www.youtube.com/watch?v=3VcKaXpzqRo" 
+                    },
+                    { 
+                        id: "p1_5", 
+                        name: "Triceps Pushdown", 
+                        sets: 3, 
+                        reps: "10–12", 
+                        tempo: "3-0-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Keep elbows glued to your sides. Isolate the tricep.", 
+                        video: "https://www.youtube.com/watch?v=6FzHs_m9i8g" 
+                    }
+                ]
+            },
+            { 
+                id: 1, 
+                shortTitle: "Pull A", 
+                title: "Heavy Pull (Thickness)", 
+                focus: "Back Thickness, Traps, Biceps", 
+                color: "blue", 
+                emoji: "🦍", 
+                cardio: "Incline Walk 12 min", 
+                core: "Pallof Press: 3 x 12/side (Anti-rotation)", 
+                tip: "<ul><li><strong>Developer Correction:</strong> This is your most important day for posture. We are fighting the 'hunch'.</li><li><strong>Grip:</strong> If your forearms give out before your back (common with coding), use straps.</li><li><strong>Face Pulls:</strong> These are non-negotiable. Do them with slow control to reset your shoulder joint.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "pu1_1", 
+                        name: "Deadlift", 
+                        sets: 3, 
+                        reps: "5–6", 
+                        tempo: "X-1-X-1", 
+                        rest: "180s", 
+                        rpe: "8-9", 
+                        note: "Brace core hard. Sitting weakens the lower back, so form is key.", 
+                        video: "https://www.youtube.com/watch?v=wYREQkVtvEc" 
+                    },
+                    { 
+                        id: "pu1_2", 
+                        name: "Lat Pulldown", 
+                        sets: 3, 
+                        reps: "8–10", 
+                        tempo: "3-1-1-1", 
+                        rest: "90s", 
+                        rpe: "8", 
+                        note: "Drive elbows down to hips. Don't just pull with arms.", 
+                        video: "https://www.youtube.com/watch?v=CAwf7n6Luuc" 
+                    },
+                    { 
+                        id: "pu1_3", 
+                        name: "Seated Cable Row", 
+                        sets: 3, 
+                        reps: "10", 
+                        tempo: "2-0-1-1", 
+                        rest: "90s", 
+                        rpe: "8", 
+                        note: "Pause for 1 sec at full contraction. Squeeze shoulder blades.", 
+                        video: "https://www.youtube.com/watch?v=GZbfZ033f74" 
+                    },
+                    { 
+                        id: "pu1_4", 
+                        name: "Face Pulls", 
+                        sets: 4, 
+                        reps: "15", 
+                        tempo: "2-1-1-2", 
+                        rest: "60s", 
+                        rpe: "7", 
+                        note: "Pull to forehead. Rotate hands up at the end. CRITICAL for posture.", 
+                        video: "https://www.youtube.com/watch?v=eIq5CB9IXLw" 
+                    },
+                    { 
+                        id: "pu1_5", 
+                        name: "Barbell Curl", 
+                        sets: 3, 
+                        reps: "8–10", 
+                        tempo: "3-0-1-0", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Strict form. No swinging.", 
+                        video: "https://www.youtube.com/watch?v=kwG2ipFRgfo" 
+                    }
+                ]
+            },
+            { 
+                id: 2, 
+                shortTitle: "Legs A", 
+                title: "Legs (Quad Focus)", 
+                focus: "Quads, Adductors, Calves", 
+                color: "emerald", 
+                emoji: "🦵", 
+                cardio: "🚫 NO CARDIO (CNS Recovery)", 
+                core: "Plank: 3 x 60 sec", 
+                tip: "<ul><li><strong>Hip Mobility:</strong> Sitting causes tight hip flexors. Do 'World's Greatest Stretch' before squatting.</li><li><strong>Knee Health:</strong> Don't bounce at the bottom of the squat. Control the descent.</li><li><strong>Energy:</strong> Eat a good carb meal 2 hours prior. This session burns the most energy.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "l1_1", 
+                        name: "Barbell Squat", 
+                        sets: 3, 
+                        reps: "6–8", 
+                        tempo: "3-1-X-1", 
+                        rest: "180s", 
+                        rpe: "8-9", 
+                        note: "Deep breath into stomach. Break parallel if flexibility allows.", 
+                        video: "https://www.youtube.com/watch?v=gcNh17Ckjgg" 
+                    },
+                    { 
+                        id: "l1_2", 
+                        name: "Leg Press", 
+                        sets: 3, 
+                        reps: "10–12", 
+                        tempo: "3-0-1-0", 
+                        rest: "120s", 
+                        rpe: "8", 
+                        note: "Place feet lower on platform to target quads.", 
+                        video: "https://www.youtube.com/watch?v=IZxyjW7MPJQ" 
+                    },
+                    { 
+                        id: "l1_3", 
+                        name: "Leg Extension", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-0-1-1", 
+                        rest: "60s", 
+                        rpe: "10", 
+                        note: "Hold the squeeze at the top for 1 second. Burnout.", 
+                        video: "https://www.youtube.com/watch?v=YyvSfVjQeL0" 
+                    },
+                    { 
+                        id: "l1_4", 
+                        name: "Standing Calf Raises", 
+                        sets: 4, 
+                        reps: "15–20", 
+                        tempo: "2-1-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Full stretch at bottom, full peak at top.", 
+                        video: "https://www.youtube.com/watch?v=YMmgqO8Jo-k" 
+                    }
+                ]
+            },
+            { 
+                id: 3, 
+                shortTitle: "Push B", 
+                title: "Hypertrophy Push", 
+                focus: "Chest Detail, Side Delts", 
+                color: "indigo", 
+                emoji: "🔥", 
+                cardio: "Incline Walk 12 min", 
+                core: "Cable Crunch: 3 x 15", 
+                tip: "<ul><li><strong>Mind-Muscle Connection:</strong> Today is not about moving heavy weight. It's about feeling the muscle stretch and contract.</li><li><strong>Tempo:</strong> 3 seconds down, 1 second up. Control is everything.</li><li><strong>Pecs:</strong> Sitting slumped tightens pecs. Focus on the STRETCH in the flys.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "p2_1", 
+                        name: "Incline Barbell Press", 
+                        sets: 3, 
+                        reps: "8–10", 
+                        tempo: "3-1-1-0", 
+                        rest: "120s", 
+                        rpe: "8", 
+                        note: "Touch bar high on chest (clavicle) for upper pecs.", 
+                        video: "https://www.youtube.com/watch?v=2j4K7lEPlTE" 
+                    },
+                    { 
+                        id: "p2_2", 
+                        name: "Flat DB Press", 
+                        sets: 3, 
+                        reps: "10", 
+                        tempo: "3-1-1-0", 
+                        rest: "90s", 
+                        rpe: "8", 
+                        note: "Get a deep stretch at the bottom.", 
+                        video: "https://www.youtube.com/watch?v=OmwxIyGsTwE" 
+                    },
+                    { 
+                        id: "p2_3", 
+                        name: "Pec Deck Fly", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-1-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Keep chest up. Don't let shoulders roll forward.", 
+                        video: "https://www.youtube.com/watch?v=O-OnpnOrWD8" 
+                    },
+                    { 
+                        id: "p2_4", 
+                        name: "Lateral Raises", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-0-1-0", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Control the negative. Don't let gravity do the work.", 
+                        video: "https://www.youtube.com/watch?v=3VcKaXpzqRo" 
+                    },
+                    { 
+                        id: "p2_5", 
+                        name: "Overhead Tricep Ext", 
+                        sets: 3, 
+                        reps: "12", 
+                        tempo: "3-0-1-0", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Keep core tight so back doesn't arch excessively.", 
+                        video: "https://www.youtube.com/watch?v=nRiJVZDpdL0" 
+                    }
+                ]
+            },
+            { 
+                id: 4, 
+                shortTitle: "Pull B", 
+                title: "Hypertrophy Pull", 
+                focus: "Lat Width, Rear Delts", 
+                color: "blue", 
+                emoji: "✈️", 
+                cardio: "Optional / None", 
+                core: "Hanging Leg Raises: 3 x 12", 
+                tip: "<ul><li><strong>V-Taper:</strong> Vertical pulling (pull-ups) widens the lats, making your waist look smaller.</li><li><strong>Rear Delts:</strong> Critical for posture. The Reverse Pec Deck is the antidote to keyboard posture.</li><li><strong>Volume:</strong> Keep rest times shorter (60-90s) to keep heart rate up.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "pu2_1", 
+                        name: "Pull-ups (Weighted)", 
+                        sets: 3, 
+                        reps: "AMRAP", 
+                        tempo: "2-1-1-1", 
+                        rest: "120s", 
+                        rpe: "9", 
+                        note: "Full dead hang at bottom. Chin over bar at top.", 
+                        video: "https://www.youtube.com/watch?v=eGo4IYlbE5g" 
+                    },
+                    { 
+                        id: "pu2_2", 
+                        name: "Single-Arm DB Row", 
+                        sets: 3, 
+                        reps: "10", 
+                        tempo: "2-0-1-1", 
+                        rest: "90s", 
+                        rpe: "8", 
+                        note: "Support body on bench to save lower back.", 
+                        video: "https://www.youtube.com/watch?v=pYcpY20QaE8" 
+                    },
+                    { 
+                        id: "pu2_3", 
+                        name: "Reverse Pec Deck", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-1-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Push back of hands out. Don't shrug shoulders.", 
+                        video: "https://www.youtube.com/watch?v=2tXh32x232E" 
+                    },
+                    { 
+                        id: "pu2_4", 
+                        name: "Hammer Curls", 
+                        sets: 3, 
+                        reps: "12", 
+                        tempo: "2-0-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Targets the brachialis for arm thickness.", 
+                        video: "https://www.youtube.com/watch?v=zC3nLlEvin4" 
+                    }
+                ]
+            },
+            { 
+                id: 5, 
+                shortTitle: "Legs B", 
+                title: "Legs (Conditioning)", 
+                focus: "Hamstrings, Glutes, Metabolism", 
+                color: "emerald", 
+                emoji: "🏊", 
+                cardio: "🏊 Swimming: 30 mins intervals", 
+                core: "Ab Wheel: 3 x 12", 
+                tip: "<ul><li><strong>Active Recovery:</strong> The swimming afterwards is huge. It decompresses your spine after a week of sitting/lifting.</li><li><strong>Glutes:</strong> Weak glutes cause back pain. Squeeze hard on the lunges and RDLs.</li><li><strong>Hydration:</strong> Drink extra water. High rep leg days drain you.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "l2_1", 
+                        name: "DB Romanian Deadlift", 
+                        sets: 3, 
+                        reps: "10–12", 
+                        tempo: "3-1-1-0", 
+                        rest: "120s", 
+                        rpe: "8", 
+                        note: "Push hips back until you feel hamstring stretch. Keep back flat.", 
+                        video: "https://www.youtube.com/watch?v=JCXUYuzwNrM" 
+                    },
+                    { 
+                        id: "l2_2", 
+                        name: "Walking Lunges", 
+                        sets: 3, 
+                        reps: "20 steps", 
+                        tempo: "Constant", 
+                        rest: "90s", 
+                        rpe: "8", 
+                        note: "Step far to target glutes, step short for quads.", 
+                        video: "https://www.youtube.com/watch?v=L8fvyb5yoTs" 
+                    },
+                    { 
+                        id: "l2_3", 
+                        name: "Lying Leg Curl", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-0-1-1", 
+                        rest: "60s", 
+                        rpe: "9", 
+                        note: "Control the weight on the way down.", 
+                        video: "https://www.youtube.com/watch?v=1Tq3QdYUuHs" 
+                    },
+                    { 
+                        id: "l2_4", 
+                        name: "Calf Raises (Seated)", 
+                        sets: 3, 
+                        reps: "15", 
+                        tempo: "2-1-1-1", 
+                        rest: "45s", 
+                        rpe: "9", 
+                        note: "Pause at the bottom stretch.", 
+                        video: "https://www.youtube.com/watch?v=JbyjNymZOt0" 
+                    }
+                ]
+            },
+            { 
+                id: 6, 
+                shortTitle: "Rest", 
+                title: "Active Recovery", 
+                focus: "Mobility, Sleep, Nutrition", 
+                color: "slate", 
+                emoji: "🔋", 
+                cardio: "Light walk / Yoga", 
+                core: "None", 
+                tip: "<ul><li><strong>Reset:</strong> You work hard (11 hrs). Use today to completely disconnect from screens if possible.</li><li><strong>Food:</strong> Prep your high-protein lunches for the week.</li><li><strong>Sleep:</strong> Try to get 9 hours tonight to bank recovery for Monday.</li></ul>", 
+                exercises: [
+                    { 
+                        id: "r_1", 
+                        name: "Full Body Stretch", 
+                        sets: 1, 
+                        reps: "20 min", 
+                        tempo: "Slow",
+                        rest: "-",
+                        rpe: "0",
+                        note: "Focus on chest, hips, and hamstrings.",
+                        video: "https://www.youtube.com/watch?v=g_tea8ZNk5A"
+                    },
+                    { 
+                        id: "r_2", 
+                        name: "Meal Prep", 
+                        sets: 1, 
+                        reps: "60 min", 
+                        tempo: "-",
+                        rest: "-",
+                        rpe: "-",
+                        note: "Cook chicken/rice for M-F lunches.",
+                        video: "https://www.youtube.com/results?search_query=meal+prep+for+muscle+gain"
+                    }
+                ]
+            }
+        ];
+
+        // --- State Management ---
+        let currentDay = 0;
+        let timerInterval;
+        let timeLeft = 0;
+        let totalTime = 0;
+        const FULL_DASH_ARRAY = 553;
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initDayScroller();
+            const savedDay = localStorage.getItem('lastViewedDay');
+            if(savedDay) {
+                updateDay(parseInt(savedDay));
+                setTimeout(() => {
+                    const el = document.getElementById(`day-btn-${savedDay}`);
+                    if(el) el.scrollIntoView({behavior: 'smooth', inline: 'center'});
+                }, 100);
+            } else {
+                updateDay(0);
+            }
+            initChart();
+        });
+
+        // --- Day Scroller Logic ---
+        function initDayScroller() {
+            const scroller = document.getElementById('day-scroller');
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            
+            workoutData.forEach((day, index) => {
+                const btn = document.createElement('button');
+                btn.id = `day-btn-${index}`;
+                btn.className = `day-btn snap-center flex-shrink-0 w-20 h-24 rounded-2xl glass-panel flex flex-col items-center justify-center gap-2 border transition-all duration-300 ${index === 0 ? 'active' : 'border-slate-700'}`;
+                btn.onclick = () => updateDay(index);
+                
+                let dotColor = 'bg-slate-500';
+                if(day.color === 'indigo' || day.color === 'red') dotColor = 'bg-indigo-500';
+                if(day.color === 'blue') dotColor = 'bg-blue-500';
+                if(day.color === 'emerald') dotColor = 'bg-emerald-500';
+
+                btn.innerHTML = `
+                    <span class="text-[10px] text-slate-400 font-bold tracking-wider">${days[index] || 'Day '+(index+1)}</span>
+                    <span class="text-xl">${day.emoji}</span>
+                    <div class="h-1 w-8 rounded-full ${dotColor} mt-1"></div>
+                `;
+                scroller.appendChild(btn);
+            });
+        }
+
+        // --- Main Update Logic ---
+        function updateDay(index) {
+            currentDay = index;
+            localStorage.setItem('lastViewedDay', index);
+            const data = workoutData[index];
+            
+            // Update UI Active State
+            document.querySelectorAll('.day-btn').forEach((btn, idx) => {
+                if(idx === index) {
+                    btn.classList.add('active', 'border-transparent');
+                    btn.classList.remove('border-slate-700');
+                } else {
+                    btn.classList.remove('active', 'border-transparent');
+                    btn.classList.add('border-slate-700');
+                }
+            });
+
+            // Update Content with Fade Animation
+            const container = document.getElementById('workout-container');
+            container.classList.remove('animate-slide-up');
+            void container.offsetWidth; // Trigger reflow
+            container.classList.add('animate-slide-up');
+
+            // Text Updates
+            document.getElementById('day-tag').innerText = data.shortTitle;
+            document.getElementById('day-title').innerText = data.title;
+            document.getElementById('day-focus').innerText = data.focus;
+            document.getElementById('day-emoji').innerText = data.emoji;
+            document.getElementById('cardio-content').innerText = data.cardio;
+            document.getElementById('core-content').innerText = data.core;
+            document.getElementById('day-tip').innerHTML = data.tip;
+
+            // Border Colors
+            const borderMap = {
+                'indigo': 'border-t-indigo-500',
+                'blue': 'border-t-blue-500',
+                'emerald': 'border-t-emerald-500',
+                'slate': 'border-t-slate-500'
+            };
+            const headerCard = document.getElementById('day-border-color');
+            headerCard.className = headerCard.className.replace(/border-t-\w+-500/, borderMap[data.color] || 'border-t-slate-500');
+
+            // Render Exercises
+            const list = document.getElementById('exercise-list');
+            list.innerHTML = '';
+            
+            data.exercises.forEach(ex => {
+                const item = document.createElement('div');
+                item.className = 'glass-panel p-4 rounded-xl flex flex-col gap-3 group hover:bg-slate-800/50 transition';
+                
+                const checkId = `day${index}_${ex.id}`;
+                const isChecked = localStorage.getItem(checkId) === 'true';
+
+                if(isChecked) item.classList.add('border-emerald-500/50');
+                
+                // --- Safe timer parse ---
+                const restSecs = parseInt(ex.rest) || 90;
+
+                item.innerHTML = `
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-start gap-4">
+                            <label class="custom-checkbox cursor-pointer relative mt-1">
+                                <input type="checkbox" class="sr-only" onchange="toggleCheck('${checkId}', this)" ${isChecked ? 'checked' : ''}>
+                                <div class="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-800/50 flex items-center justify-center transition-all hover:border-emerald-500">
+                                    <svg class="w-3.5 h-3.5 text-white hidden pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                            </label>
+                            <div>
+                                <h4 class="font-bold text-white text-base group-hover:text-indigo-300 transition flex items-center gap-2">
+                                    ${ex.name}
+                                </h4>
+                                <div class="flex flex-wrap gap-2 mt-2 mb-2">
+                                    <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono font-bold">${ex.sets} Sets</span>
+                                    <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono font-bold">${ex.reps} Reps</span>
+                                    ${ex.tempo ? `<span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded text-indigo-200 font-mono" title="Eccentric-Pause-Concentric-Pause">⏱ ${ex.tempo}</span>` : ''}
+                                    ${ex.rpe ? `<span class="text-[10px] bg-orange-500/20 border border-orange-500/30 px-2 py-0.5 rounded text-orange-200 font-mono" title="Rate of Perceived Exertion (1-10)">🔥 RPE ${ex.rpe}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="startTimer(${restSecs})" class="p-2 rounded-lg text-slate-500 bg-slate-800 border border-slate-700 hover:text-indigo-400 hover:border-indigo-500 transition" title="Start ${restSecs}s Rest Timer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                         <p class="flex-1 text-xs text-slate-300/80 italic font-medium bg-slate-700/30 p-2 rounded border-l-2 border-indigo-500/50">
+                            ${ex.note}
+                        </p>
+                        <a href="${ex.video}" target="_blank" class="yt-btn flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-400 uppercase tracking-wider transition-all hover:scale-105">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                            Watch
+                        </a>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+
+            updateProgress();
+        }
+
+        function scrollToTips() {
+            document.getElementById('tips-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- Progress Tracking ---
+        function toggleCheck(id, el) {
+            localStorage.setItem(id, el.checked);
+            const parent = el.closest('.glass-panel');
+            if (el.checked) {
+                parent.classList.add('border-emerald-500/50');
+            } else {
+                parent.classList.remove('border-emerald-500/50');
+            }
+            updateProgress();
+        }
+
+        function resetDayProgress() {
+            if(!confirm("Reset progress for this day?")) return;
+            const data = workoutData[currentDay];
+            data.exercises.forEach(ex => {
+                const id = `day${currentDay}_${ex.id}`;
+                localStorage.removeItem(id);
+            });
+            updateDay(currentDay);
+        }
+
+        function updateProgress() {
+            const dayData = workoutData[currentDay];
+            let totalEx = dayData.exercises.length;
+            let checkedEx = 0;
+            
+            dayData.exercises.forEach(ex => {
+                const id = `day${currentDay}_${ex.id}`;
+                if(localStorage.getItem(id) === 'true') checkedEx++;
+            });
+
+            const percent = totalEx === 0 ? 0 : Math.round((checkedEx / totalEx) * 100);
+            
+            document.getElementById('completion-rate').innerText = `${percent}%`;
+            document.getElementById('completion-bar').style.width = `${percent}%`;
+
             const textEl = document.getElementById('completion-text');
             if(percent === 0) textEl.innerText = "Ready to start?";
             else if(percent < 50) textEl.innerText = "Keep pushing!";
